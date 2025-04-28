@@ -15,6 +15,7 @@ type Config struct {
 	Tags                []string
 	OnlyModels          bool
 	MinSizedInts        bool
+	Nullables           bool
 	Loader              schemas.Loader
 	// When DisableOmitempty is set to true,
 	// an "omitempty" tag will never be present in generated struct fields.

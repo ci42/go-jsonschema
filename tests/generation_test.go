@@ -36,6 +36,10 @@ func TestCore(t *testing.T) {
 	t.Parallel()
 
 	testExamples(t, basicConfig, "./data/core")
+	cfg := basicConfig
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExamples(t, cfg, "./data/core")
 }
 
 func TestOmitempty(t *testing.T) {
@@ -51,12 +55,20 @@ func TestValidation(t *testing.T) {
 	t.Parallel()
 
 	testExamples(t, basicConfig, "./data/validation")
+	cfg := basicConfig
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExamples(t, cfg, "./data/validation")
 }
 
 func TestMiscWithDefaults(t *testing.T) {
 	t.Parallel()
 
 	testExamples(t, basicConfig, "./data/miscWithDefaults")
+	cfg := basicConfig
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExamples(t, cfg, "./data/miscWithDefaults")
 }
 
 func TestCrossPackage(t *testing.T) {
@@ -76,6 +88,9 @@ func TestCrossPackage(t *testing.T) {
 		},
 	}
 	testExampleFile(t, cfg, "./data/crossPackage/schema/schema.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/crossPackage/schema/schema.json")
 }
 
 func TestCrossPackageNoOutput(t *testing.T) {
@@ -94,12 +109,18 @@ func TestCrossPackageNoOutput(t *testing.T) {
 		},
 	}
 	testExampleFile(t, cfg, "./data/crossPackageNoOutput/schema/schema.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/crossPackageNoOutput/schema/schema.json")
 }
 
 func TestBooleanAsSchema(t *testing.T) {
 	t.Parallel()
 
 	cfg := basicConfig
+	testExampleFile(t, cfg, "./data/misc/booleanAsSchema/booleanAsSchema.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExampleFile(t, cfg, "./data/misc/booleanAsSchema/booleanAsSchema.json")
 }
 
@@ -108,6 +129,9 @@ func TestCapitalization(t *testing.T) {
 
 	cfg := basicConfig
 	cfg.Capitalizations = []string{"ID", "URL", "HtMl"}
+	testExampleFile(t, cfg, "./data/misc/capitalization/capitalization.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExampleFile(t, cfg, "./data/misc/capitalization/capitalization.json")
 }
 
@@ -118,12 +142,18 @@ func TestOnlyModels(t *testing.T) {
 	cfg.OnlyModels = true
 
 	testExampleFile(t, cfg, "./data/misc/onlyModels/onlyModels.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/misc/onlyModels/onlyModels.json")
 }
 
 func TestSpecialCharacters(t *testing.T) {
 	t.Parallel()
 
 	cfg := basicConfig
+	testExampleFile(t, cfg, "./data/misc/specialCharacters/specialCharacters.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExampleFile(t, cfg, "./data/misc/specialCharacters/specialCharacters.json")
 }
 
@@ -133,6 +163,9 @@ func TestTags(t *testing.T) {
 	cfg := basicConfig
 	cfg.Tags = []string{"yaml"}
 	testExampleFile(t, cfg, "./data/misc/tags/tags.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/misc/tags/tags.json")
 }
 
 func TestStructNameFromTitle(t *testing.T) {
@@ -141,12 +174,18 @@ func TestStructNameFromTitle(t *testing.T) {
 	cfg := basicConfig
 	cfg.StructNameFromTitle = true
 	testExamples(t, cfg, "./data/nameFromTitle")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExamples(t, cfg, "./data/nameFromTitle")
 }
 
 func TestYamlStructNameFromFile(t *testing.T) {
 	t.Parallel()
 
 	cfg := basicConfig
+	testExampleFile(t, cfg, "./data/yaml/yamlStructNameFromFile/yamlStructNameFromFile.yaml")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExampleFile(t, cfg, "./data/yaml/yamlStructNameFromFile/yamlStructNameFromFile.yaml")
 }
 
@@ -156,6 +195,9 @@ func TestYamlMultilineDescriptions(t *testing.T) {
 	cfg := basicConfig
 	cfg.YAMLExtensions = []string{"yaml"}
 	testExampleFile(t, cfg, "./data/yaml/yamlMultilineDescriptions/yamlMultilineDescriptions.yaml")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/yaml/yamlMultilineDescriptions/yamlMultilineDescriptions.yaml")
 }
 
 func TestExtraImportsYAML(t *testing.T) {
@@ -164,11 +206,18 @@ func TestExtraImportsYAML(t *testing.T) {
 	cfg := basicConfig
 	cfg.ExtraImports = true
 	testExampleFile(t, cfg, "./data/extraImports/gopkgYAMLv3/gopkgYAMLv3.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExampleFile(t, cfg, "./data/extraImports/gopkgYAMLv3/gopkgYAMLv3.json")
 }
 
 func TestRegressions(t *testing.T) {
 	t.Parallel()
 
+	testExamples(t, basicConfig, "./data/regressions")
+	cfg := basicConfig
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExamples(t, basicConfig, "./data/regressions")
 }
 
@@ -177,6 +226,9 @@ func TestExtraImportsYAMLAdditionalProperties(t *testing.T) {
 
 	cfg := basicConfig
 	cfg.ExtraImports = true
+	testExampleFile(t, cfg, "./data/extraImports/gopkgYAMLv3AdditionalProperties/gopkgYAMLv3AdditionalProperties.json")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExampleFile(t, cfg, "./data/extraImports/gopkgYAMLv3AdditionalProperties/gopkgYAMLv3AdditionalProperties.json")
 }
 
@@ -187,11 +239,18 @@ func TestMinSizeInt(t *testing.T) {
 	cfg.MinSizedInts = true
 
 	testExamples(t, cfg, "./data/minSizedInts")
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
+	testExamples(t, cfg, "./data/minSizedInts")
 }
 
 func TestSchemaExtensions(t *testing.T) {
 	t.Parallel()
 
+	testExamples(t, basicConfig, "./data/schemaExtensions")
+	cfg := basicConfig
+	cfg.DefaultPackageName = "github.com/example/test_nullable"
+	cfg.Nullables = true
 	testExamples(t, basicConfig, "./data/schemaExtensions")
 }
 
@@ -244,6 +303,10 @@ func testExampleFile(t *testing.T, cfg generator.Config, fileName string) {
 			}
 
 			goldenFileName := filepath.Join(filepath.Dir(fileName), outputName)
+			if cfg.Nullables {
+				goldenFileName = filepath.Join(filepath.Dir(fileName), "nullable", outputName)
+				//goldenFileName = strings.TrimSuffix(goldenFileName, ".go") + "_nullable.go"
+			}
 			t.Logf("Using golden data in %s", mustAbs(goldenFileName))
 
 			goldenData, err := os.ReadFile(goldenFileName)
@@ -255,7 +318,7 @@ func testExampleFile(t *testing.T, cfg generator.Config, fileName string) {
 				goldenData = source
 
 				t.Log("File does not exist; creating it")
-
+				os.Mkdir(filepath.Dir(goldenFileName), 0777)
 				if err = os.WriteFile(goldenFileName, goldenData, 0o655); err != nil {
 					t.Fatal(err)
 				}
