@@ -330,7 +330,7 @@ func (g *schemaGenerator) generateDeclaredType(t *schemas.Type, scope nameScope)
 				})
 			}
 
-			validators = g.structFieldValidators(validators, f, f.Type, false)
+			validators = g.structFieldValidators(validators, f, f.Type, false, false)
 		}
 
 		if t.IsSubSchemaTypeElem() || len(validators) > 0 {
@@ -341,7 +341,7 @@ func (g *schemaGenerator) generateDeclaredType(t *schemas.Type, scope nameScope)
 		validators = g.structFieldValidators(nil, codegen.StructField{
 			Type:       tt,
 			SchemaType: t,
-		}, tt, false)
+		}, tt, false, false)
 
 		if t.IsSubSchemaTypeElem() || len(validators) > 0 {
 			g.generateUnmarshaler(decl, validators)
@@ -356,12 +356,7 @@ func (g *schemaGenerator) generateDeclaredType(t *schemas.Type, scope nameScope)
 	return &codegen.NamedType{Decl: &decl}, nil
 }
 
-func (g *schemaGenerator) structFieldValidators(
-	validators []validator,
-	f codegen.StructField,
-	t codegen.Type,
-	isNillable bool,
-) []validator {
+func (g *schemaGenerator) structFieldValidators(validators []validator, f codegen.StructField, t codegen.Type, isNillable bool, nullable bool) []validator {
 	switch v := t.(type) {
 	case codegen.NullType:
 		validators = append(validators, &nullTypeValidator{
@@ -370,7 +365,10 @@ func (g *schemaGenerator) structFieldValidators(
 		})
 
 	case *codegen.PointerType:
-		validators = g.structFieldValidators(validators, f, v.Type, v.IsNillable())
+		validators = g.structFieldValidators(validators, f, v.Type, v.IsNillable(), false)
+
+	case *codegen.NullableType:
+		validators = g.structFieldValidators(validators, f, v.Type, v.IsNillable(), true)
 
 	case codegen.PrimitiveType:
 		if v.Type == schemas.TypeNameString {
@@ -383,6 +381,7 @@ func (g *schemaGenerator) structFieldValidators(
 					maxLength:  f.SchemaType.MaxLength,
 					pattern:    f.SchemaType.Pattern,
 					isNillable: isNillable,
+					nullable:   nullable,
 				})
 			}
 
@@ -405,6 +404,7 @@ func (g *schemaGenerator) structFieldValidators(
 					minimum:          f.SchemaType.Minimum,
 					exclusiveMinimum: f.SchemaType.ExclusiveMinimum,
 					roundToInt:       strings.Contains(v.Type, "int"),
+					nullable:         nullable,
 				})
 			}
 
@@ -489,6 +489,10 @@ func (g *schemaGenerator) generateType(t *schemas.Type, scope nameScope) (codege
 	}
 
 	typeName, typePtr := g.determineTypeName(t)
+	ptr2nullable := false
+	if g.config.Nullables {
+		ptr2nullable = true
+	}
 
 	switch typeName {
 	case schemas.TypeNameArray:
@@ -514,6 +518,7 @@ func (g *schemaGenerator) generateType(t *schemas.Type, scope nameScope) (codege
 			typeName,
 			t.Format,
 			typePtr,
+			ptr2nullable,
 			g.config.MinSizedInts,
 			&t.Minimum,
 			&t.Maximum,
@@ -524,8 +529,15 @@ func (g *schemaGenerator) generateType(t *schemas.Type, scope nameScope) (codege
 			return nil, fmt.Errorf("invalid type %q: %w", typeName, err)
 		}
 
+		if _, ok := cg.(*codegen.NullableType); ok {
+			g.output.file.Package.AddImport("github.com/oapi-codegen/nullable", "")
+		}
+
 		if ncg, ok := cg.(codegen.NamedType); ok {
 			for _, imprt := range ncg.Package.Imports {
+				if typePtr && ptr2nullable {
+					g.output.file.Package.AddImport("github.com/oapi-codegen/nullable", "")
+				}
 				g.output.file.Package.AddImport(imprt.QualifiedName, "")
 			}
 
@@ -797,7 +809,13 @@ func (g *schemaGenerator) addStructField(
 		if isRequired {
 			structType.RequiredJSONFields = append(structType.RequiredJSONFields, structField.JSONName)
 		} else if !structField.Type.IsNillable() {
-			structField.Type = codegen.WrapTypeInPointer(structField.Type)
+			if g.config.Nullables {
+				g.output.file.Package.AddImport("github.com/oapi-codegen/nullable", "")
+				structField.Type = codegen.WrapTypeInNullable(structField.Type)
+			} else {
+				structField.Type = codegen.WrapTypeInPointer(structField.Type)
+			}
+
 		}
 	}
 
@@ -918,6 +936,10 @@ func (g *schemaGenerator) generateTypeInline(t *schemas.Type, scope nameScope) (
 		typeIndex := 0
 
 		var typeShouldBePointer bool
+		nullable := false
+		if g.config.Nullables {
+			nullable = true
+		}
 
 		if len(t.Type) == 2 {
 			for i, t := range t.Type {
@@ -950,6 +972,7 @@ func (g *schemaGenerator) generateTypeInline(t *schemas.Type, scope nameScope) (
 				t.Type[typeIndex],
 				t.Format,
 				typeShouldBePointer,
+				nullable,
 				g.config.MinSizedInts,
 				&t.Minimum,
 				&t.Maximum,
@@ -960,9 +983,16 @@ func (g *schemaGenerator) generateTypeInline(t *schemas.Type, scope nameScope) (
 				return nil, fmt.Errorf("invalid type %q: %w", t.Type[typeIndex], err)
 			}
 
+			if _, ok := cg.(*codegen.NullableType); ok {
+				g.output.file.Package.AddImport("github.com/oapi-codegen/nullable", "")
+			}
+
 			if ncg, ok := cg.(codegen.NamedType); ok {
 				for _, imprt := range ncg.Package.Imports {
 					g.output.file.Package.AddImport(imprt.QualifiedName, "")
+					if typeShouldBePointer && nullable {
+						g.output.file.Package.AddImport("github.com/oapi-codegen/nullable", "")
+					}
 				}
 
 				return ncg, nil
@@ -1006,6 +1036,7 @@ func (g *schemaGenerator) generateEnumType(t *schemas.Type, scope nameScope) (co
 		if enumType, err = codegen.PrimitiveTypeFromJSONSchemaType(
 			t.Type[0],
 			t.Format,
+			false,
 			false,
 			g.config.MinSizedInts,
 			&t.Minimum,

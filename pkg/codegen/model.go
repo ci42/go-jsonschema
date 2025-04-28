@@ -253,6 +253,18 @@ func (p PointerType) Generate(out *Emitter) {
 	p.Type.Generate(out)
 }
 
+type NullableType struct {
+	Type Type
+}
+
+func (NullableType) IsNillable() bool { return true }
+
+func (p NullableType) Generate(out *Emitter) {
+	out.Printf("nullable.Nullable[")
+	p.Type.Generate(out)
+	out.Printf("]")
+}
+
 type ArrayType struct {
 	Type Type
 }

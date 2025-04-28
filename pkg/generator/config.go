@@ -15,6 +15,7 @@ type Config struct {
 	Tags                []string
 	OnlyModels          bool
 	MinSizedInts        bool
+	Nullables           bool
 	Loader              schemas.Loader
 }
 
