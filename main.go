@@ -33,6 +33,7 @@ var (
 	structNameFromTitle       bool
 	minSizedInts              bool
 	disableReadOnlyValidation bool
+	nullables                 bool
 
 	errFlagFormat = errors.New("flag must be in the format URI=PACKAGE")
 
@@ -79,6 +80,7 @@ var (
 				OnlyModels:                onlyModels,
 				MinSizedInts:              minSizedInts,
 				DisableReadOnlyValidation: disableReadOnlyValidation,
+				Nullables:                 nullables,
 			}
 			for _, id := range allKeys(schemaPackageMap, schemaOutputMap, schemaRootTypeMap) {
 				mapping := generator.SchemaMapping{SchemaID: id}
@@ -181,6 +183,7 @@ also look for foo.json if --resolve-extension json is provided.`)
 		"Uses sized int and uint values based on the min and max values for the field")
 	rootCmd.PersistentFlags().BoolVar(&disableReadOnlyValidation, "disable-readonly-validation", false,
 		"Do not include validation of readonly fields")
+	rootCmd.PersistentFlags().BoolVar(&nullables, "nullables", false, "Generate nullable instead of pointer types")
 
 	abortWithErr(rootCmd.Execute())
 }

@@ -14,6 +14,10 @@ var (
 	errUnknownJSONSchemaType = errors.New("unknown JSON Schema type")
 )
 
+func WrapTypeInNullable(t Type) Type {
+	return &NullableType{Type: t}
+}
+
 func WrapTypeInPointer(t Type) Type {
 	if isPointerType(t) {
 		return t
@@ -39,6 +43,7 @@ func PrimitiveTypeFromJSONSchemaType(
 	jsType,
 	format string,
 	pointer,
+	ptr2nullable,
 	minIntSize bool,
 	minimum **float64,
 	maximum **float64,
@@ -118,6 +123,9 @@ func PrimitiveTypeFromJSONSchemaType(
 		}
 
 		if pointer {
+			if ptr2nullable {
+				return WrapTypeInNullable(t), nil
+			}
 			return WrapTypeInPointer(t), nil
 		}
 

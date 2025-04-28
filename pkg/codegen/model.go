@@ -297,6 +297,20 @@ func (p PointerType) Generate(out *Emitter) error {
 	return nil
 }
 
+type NullableType struct {
+	Type Type
+}
+
+func (NullableType) IsNillable() bool { return true }
+
+func (p NullableType) Generate(out *Emitter) error {
+	out.Printf("nullable.Nullable[")
+	p.Type.Generate(out)
+	out.Printf("]")
+
+	return nil
+}
+
 type ArrayType struct {
 	Type Type
 }

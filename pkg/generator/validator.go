@@ -349,28 +349,39 @@ type stringValidator struct {
 	maxLength  int
 	isNillable bool
 	pattern    string
+	nullable   bool
 }
 
 func (v *stringValidator) generate(out *codegen.Emitter, format string) error {
 	value := getPlainName(v.fieldName)
 	fieldName := v.jsonName
-	checkPointer := ""
-	pointerPrefix := ""
+	checkValue := ""
+	getValue := value
 
 	if v.isNillable {
-		checkPointer = fmt.Sprintf("%s != nil && ", value)
-		pointerPrefix = "*"
+		if v.nullable {
+			checkValue = fmt.Sprintf("(%s.IsSpecified() && !%s.IsNull()) && ", value, value)
+			getValue = fmt.Sprintf("%s.MustGet()", value)
+		} else {
+			checkValue = fmt.Sprintf("%s != nil && ", value)
+			getValue = fmt.Sprintf("*%s", value)
+		}
 	}
 
 	if len(v.pattern) != 0 {
 		if v.isNillable {
-			out.Printlnf("if %s != nil {", value)
-			out.Indent(1)
+			if v.nullable {
+				out.Printlnf("if %s.IsSpecified() && !%s.IsNull() {", value, value)
+				out.Indent(1)
+			} else {
+				out.Printlnf("if %s != nil {", value)
+				out.Indent(1)
+			}
 		}
 
 		out.Printlnf(
-			`if matched, _ := regexp.MatchString(`+"`%s`"+`, string(%s%s)); !matched {`,
-			v.pattern, pointerPrefix, value,
+			`if matched, _ := regexp.MatchString(`+"`%s`"+`, string(%s)); !matched {`,
+			v.pattern, getValue,
 		)
 		out.Indent(1)
 		out.Printlnf(
@@ -391,7 +402,7 @@ func (v *stringValidator) generate(out *codegen.Emitter, format string) error {
 	}
 
 	if v.minLength != 0 {
-		out.Printlnf(`if %slen(%s%s) < %d {`, checkPointer, pointerPrefix, value, v.minLength)
+		out.Printlnf(`if %slen(%s) < %d {`, checkValue, getValue, v.minLength)
 		out.Indent(1)
 		out.Printlnf(`return fmt.Errorf("field %%s length: must be >= %%d", "%s", %d)`, fieldName, v.minLength)
 		out.Indent(-1)
@@ -399,7 +410,7 @@ func (v *stringValidator) generate(out *codegen.Emitter, format string) error {
 	}
 
 	if v.maxLength != 0 {
-		out.Printlnf(`if %slen(%s%s) > %d {`, checkPointer, pointerPrefix, value, v.maxLength)
+		out.Printlnf(`if %slen(%s) > %d {`, checkValue, getValue, v.maxLength)
 		out.Indent(1)
 		out.Printlnf(`return fmt.Errorf("field %%s length: must be <= %%d", "%s", %d)`, fieldName, v.maxLength)
 		out.Indent(-1)
@@ -426,36 +437,45 @@ type numericValidator struct {
 	minimum          *float64
 	exclusiveMinimum *any
 	roundToInt       bool
+	nullable         bool
 }
 
 func (v *numericValidator) generate(out *codegen.Emitter, format string) error {
 	value := getPlainName(v.fieldName)
-	checkPointer := ""
-	pointerPrefix := ""
+	checkValue := ""
+	getValue := value
 
-	if v.isNillable {
-		checkPointer = fmt.Sprintf("%s != nil && ", value)
-		pointerPrefix = "*"
+	if v.isNillable && v.nullable {
+		checkValue = fmt.Sprintf("(%s.IsSpecified() && !%s.IsNull())", value, value)
+		getValue = fmt.Sprintf("%s.MustGet()", value)
+	} else if v.isNillable {
+		checkValue = fmt.Sprintf("%s != nil", value)
+		getValue = fmt.Sprintf("*%s", value)
 	}
 
 	if v.multipleOf != nil {
 		if v.roundToInt {
-			out.Printlnf(`if %s %s%s %% %v != 0 {`, checkPointer, pointerPrefix, value, v.valueOf(*v.multipleOf))
+			if v.isNillable {
+				out.Printlnf(`if %s && %s %% %v != 0 {`, checkValue, getValue, v.valueOf(*v.multipleOf))
+			} else {
+				out.Printlnf(`if %s %% %v != 0 {`, getValue, v.valueOf(*v.multipleOf))
+			}
 			out.Indent(1)
 			out.Printlnf(`return fmt.Errorf("field %%s: must be a multiple of %%v", "%s", %f)`, v.jsonName, *v.multipleOf)
 			out.Indent(-1)
 			out.Printlnf("}")
 		} else {
 			if v.isNillable {
-				out.Printlnf(`if %s != nil {`, value)
+				out.Printlnf(`if %s {`, checkValue)
 			} else {
 				out.Printlnf("{")
 			}
 
 			out.Indent(1)
-			out.Printlnf("remainder := math.Mod(%s%s, %v)", pointerPrefix, value, v.valueOf(*v.multipleOf))
+			out.Printlnf("remainder := math.Mod(%s, %v)", getValue, v.valueOf(*v.multipleOf))
 			out.Printlnf(
 				`if !(math.Abs(remainder) < 1e-10 || math.Abs(remainder - %v) < 1e-10) {`, v.valueOf(*v.multipleOf))
+
 			out.Indent(1)
 			out.Printlnf(`return fmt.Errorf("field %%s: must be a multiple of %%v", "%s", %f)`, v.jsonName, *v.multipleOf)
 			out.Indent(-1)
@@ -470,17 +490,19 @@ func (v *numericValidator) generate(out *codegen.Emitter, format string) error {
 		v.minimum, v.maximum, v.exclusiveMinimum, v.exclusiveMaximum,
 	)
 
-	v.genBoundary(out, checkPointer, pointerPrefix, value, nMax, nMaxExclusive, "<")
-	v.genBoundary(out, checkPointer, pointerPrefix, value, nMin, nMinExclusive, ">")
+	if v.isNillable {
+		checkValue = checkValue + " && "
+	}
+	v.genBoundary(out, checkValue, getValue, nMax, nMaxExclusive, "<")
+	v.genBoundary(out, checkValue, getValue, nMin, nMinExclusive, ">")
 
 	return nil
 }
 
 func (v *numericValidator) genBoundary(
 	out *codegen.Emitter,
-	checkPointer,
-	pointerPrefix,
-	value string,
+	checkValue,
+	getValue string,
 	boundary *float64,
 	exclusive bool,
 	sign string,
@@ -498,7 +520,7 @@ func (v *numericValidator) genBoundary(
 		sign += "="
 	}
 
-	out.Printlnf(`if %s%v %s%s %s {`, checkPointer, v.valueOf(*boundary), comp, pointerPrefix, value)
+	out.Printlnf(`if %s%v %s %s {`, checkValue, v.valueOf(*boundary), comp, getValue)
 	out.Indent(1)
 	out.Printlnf(`return fmt.Errorf("field %%s: must be %s %%v", "%s", %v)`, sign, v.jsonName, v.valueOf(*boundary))
 	out.Indent(-1)
